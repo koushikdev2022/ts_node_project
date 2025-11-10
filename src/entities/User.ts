@@ -5,7 +5,10 @@ import {
     CreateDateColumn,
     UpdateDateColumn,
     Index,
+    ManyToOne,
+    JoinColumn,
 } from "typeorm";
+import { Role } from "./Role";
 
 @Entity("users")
 export class User {
@@ -58,4 +61,9 @@ export class User {
 
     @UpdateDateColumn({ type: "timestamp" })
     updated_at!: Date;
+
+
+    @ManyToOne(() => Role, (role) => role.users)
+    @JoinColumn({ name: "role_id" })
+    role!: Role;
 }
