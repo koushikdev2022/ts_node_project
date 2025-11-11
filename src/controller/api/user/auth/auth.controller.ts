@@ -1,13 +1,15 @@
 import { Request, Response, NextFunction } from "express";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import { AppDataSource } from "../../../../config/db";
 import { User } from "../../../../entities/User";
+import { generateHashPassword } from "../../../../utils/hash/hash"; 
+import { generateAccessToken, generateRefreshToken } from "../../../../utils/jwt/jwt"; 
 
 interface RegisterRequestBody {
     fullname: string;
     email: string;
     password: string;
+    username:string;
+    role:number;
 }
 
 export const register = async (
@@ -16,7 +18,7 @@ export const register = async (
     next: NextFunction
 ): Promise<Response | void> => {
     try {
-        const { fullname, email, password } = req.body;
+        const { fullname, email, password,username,role } = req.body;
 
         if (!fullname || !email || !password) {
             return res.status(400).json({
@@ -40,22 +42,28 @@ export const register = async (
             });
         }
 
-        const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash(password, salt);
+
+        const hashedPassword = await generateHashPassword(password);
 
         const user = userRepository.create({
             fullname,
             email,
             password: hashedPassword,
+            username:username,
+            role_id:role,
         });
 
         await userRepository.save(user);
 
-        const token = jwt.sign(
-            { id: user.id, email: user.email },
-            process.env.JWT_ACCESS_TOKEN_SECRET as string,
-            { expiresIn: "7d" }
-        );
+        const accessToken = await generateAccessToken({
+            id: user.id,
+            email: user.email,
+        });
+
+        const refreshToken = await generateRefreshToken({
+            id: user.id,
+            email: user.email,
+        });
 
         return res.status(201).json({
             message: "User registered successfully",
@@ -65,7 +73,8 @@ export const register = async (
                 id: user.id,
                 name: user.fullname,
                 email: user.email,
-                token,
+                accessToken,
+                refreshToken,
             },
         });
     } catch (error: any) {
@@ -91,6 +100,10 @@ export const list = async (
         
         const users = await userRepository.find({
             where: { is_active: 1 },
+            relations: {
+                role: true
+            },
+            select: ["id", "email", "fullname", "username", "role_id"],
         });
 
         return res.status(200).json({
