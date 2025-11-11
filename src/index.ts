@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import morgan from "morgan";
 import { AppDataSource } from "./config/db";
-
+import loadRoute from './router/load.route';
 
 dotenv.config();
 
@@ -16,6 +16,8 @@ app.use(cors({ origin: "*" }));
 app.use(morgan("dev"));
 app.use(express.urlencoded({ limit: "100mb", extended: false }));
 app.use(express.json({ limit: "100mb" }));
+app.use("/api/",loadRoute);
+
 
 const connectDatabase = async (): Promise<void> => {
     try {
